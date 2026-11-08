@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
+import { api, apiBaseUrl } from '../../services/api';
 
 export default function AuthPage({ mode = 'login' }) {
   const isLogin = mode === 'login';
@@ -14,7 +14,7 @@ export default function AuthPage({ mode = 'login' }) {
       : ''
   );
   const [successMessage, setSuccessMessage] = useState('');
-  const googleAuthUrl = `${(import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')}/auth/google`;
+  const googleAuthUrl = `${apiBaseUrl.replace(/\/$/, '')}/auth/google`;
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);

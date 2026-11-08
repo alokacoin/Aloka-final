@@ -94,6 +94,7 @@ Aloka-final/
 │  │  ├─ App.jsx              # Route configuration
 │  │  └─ main.jsx             # App bootstrapping
 │  ├─ .env.example
+│  ├─ .env.production.example
 │  ├─ package.json
 │  └─ vite.config.*
 ├─ server/
@@ -112,8 +113,12 @@ Aloka-final/
 │  │  └─ seedCalculators.js   # Seed calculator catalogue
 │  ├─ test/                   # Backend tests
 │  ├─ .env.example
+│  ├─ .env.production.example
 │  └─ package.json
-├─ shared/                    # Shared data or project-wide assets if used
+├─ shared/                    # @aloka/shared local package used by both apps
+│  ├─ calculators.js          # Shared calculator catalogue definitions
+│  ├─ calculatorEngines.js    # Shared calculator formulas and engines
+│  └─ package.json
 ├─ docs/
 │  └─ development-progress.md # Current implementation progress and limitations
 ├─ README.md
@@ -135,15 +140,19 @@ Before running the project, make sure you have:
 
 ### 1) Clone and install dependencies
 
+Install each application from its own directory. Both use `shared/` through a local package dependency; keep the `shared/` directory alongside `client/` and `server/`.
+
 ```powershell
 cd E:\Aloka\FInal aloka
 
 cd server
-npm install
+npm install --install-links
 
 cd ..\client
-npm install
+npm install --install-links
 ```
+
+`--install-links` installs the local shared package without requiring Windows symlink permissions.
 
 ### 2) Configure environment variables
 
@@ -210,6 +219,55 @@ Frontend runs on:
 
 - `http://localhost:5173`
 
+In development, Vite proxies `/api` requests to `http://localhost:5000`. `VITE_API_URL` may be set to `http://localhost:5000/api` in `client/.env`; in production it must point to the deployed API.
+
+## Separate frontend and backend deployment
+
+The recommended production split is:
+
+| Component | Custom domain | Project directory | Install and build command (from repository root) | Start / output |
+|---|---|---|---|---|
+| Frontend | `https://aloka.co.in` (optionally `https://www.aloka.co.in`) | `client/` | `npm install --prefix client --install-links` then `npm run build --prefix client` | Publish `client/dist/` as a static site |
+| Backend API | `https://api.aloka.co.in` | `server/` | `npm install --prefix server --install-links` then `npm run build --prefix server` | `npm start --prefix server` |
+
+Both deployment services must check out the **whole repository**, including the sibling `shared/` directory, and use the repository root as their build context. The shared code is installed locally by each app's `file:../shared` dependency. Do not deploy only the `client/` or `server/` folder without `shared/`. If you change files in `shared/` during local development, reinstall the package in the app you changed with `npm install --install-links`.
+
+Configure the frontend service's build-time variables:
+
+```env
+VITE_API_URL=https://api.aloka.co.in/api
+VITE_GOOGLE_CLIENT_ID=your-google-oauth-client-id
+```
+
+`VITE_API_URL` is embedded into the frontend at build time. The frontend defaults to the Aloka API domain for production if this variable is omitted, but setting it explicitly is recommended.
+
+Configure the backend service's environment:
+
+```env
+NODE_ENV=production
+MONGO_URI=your-production-mongodb-connection-string
+JWT_SECRET=your-long-random-production-secret
+CLIENT_URL=https://aloka.co.in
+FRONTEND_URL=https://aloka.co.in
+CORS_ORIGINS=https://aloka.co.in,https://www.aloka.co.in
+BACKEND_URL=https://api.aloka.co.in
+GOOGLE_CALLBACK_URL=https://api.aloka.co.in/api/auth/google/callback
+```
+
+Also configure any integrations you use, such as Cloudinary (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`), Resend (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`), and news providers. Let the hosting provider supply `PORT` unless it requires a fixed value.
+
+### DNS, HTTPS, and sign-in checklist
+
+1. Add `aloka.co.in` (and optionally `www.aloka.co.in`) to the frontend host and `api.aloka.co.in` to the backend host.
+2. Create the DNS records requested by each host (commonly an apex A/ALIAS record for the frontend and a CNAME for the API). DNS targets depend on the hosting provider.
+3. Enable HTTPS for both domains before using production sign-in.
+4. Set the frontend build variable `VITE_API_URL` to `https://api.aloka.co.in/api`.
+5. Set backend `CLIENT_URL`, `FRONTEND_URL`, and `CORS_ORIGINS` to the exact frontend origins. Add any additional frontend hostnames explicitly.
+6. In Google OAuth settings, add `https://aloka.co.in` as an authorized JavaScript origin and `https://api.aloka.co.in/api/auth/google/callback` as an authorized redirect URI. Use the same OAuth client ID in `VITE_GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_ID`; keep `GOOGLE_CLIENT_SECRET` only on the backend.
+7. Check `https://api.aloka.co.in/api/health` after deployment. It should report `database: connected`.
+
+The client sends credentialed requests to the API. The API must allow the frontend origin with credentialed CORS. Production auth cookies are secure and host-only to `api.aloka.co.in`; do not set a cookie domain unless your authentication design is intentionally changed.
+
 ## Important routes
 
 ### Public routes
@@ -227,7 +285,7 @@ Frontend runs on:
 - `/user` — user dashboard
 - `/user/blogs` — my articles
 - `/dashboard/blogs/create` — create a blog post
-- `/dashboard/blogs/:id/edit` — edit your draft or rejected blog
+- `/dashboard/blogs/:id/edit` — edit your own blog (editing a published or pending article returns it to draft)
 - `/dashboard/my-inquiries` — service inquiries submitted by the user
 
 ### Admin routes

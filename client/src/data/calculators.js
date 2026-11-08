@@ -4,4 +4,4 @@ export {
   calculators,
   filterCalculators,
   findCalculatorPath
-} from '../../../shared/calculators.js';
+} from '@aloka/shared/calculators';

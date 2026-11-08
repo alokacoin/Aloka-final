@@ -6,7 +6,7 @@ import Button from '../../components/ui/Button';
 import { calculators } from '../../data/calculators';
 import { api } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
-import { calculateWithEngine, getCalculatorEngine } from '../../../../shared/calculatorEngines.js';
+import { calculateWithEngine, getCalculatorEngine } from '@aloka/shared/calculatorEngines';
 
 const currency = new Intl.NumberFormat('en-IN', {
   style: 'currency',

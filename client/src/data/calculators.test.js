@@ -10,7 +10,7 @@ import {
   calculateWithEngine,
   getCalculatorEngine,
   implementedCalculatorSlugs
-} from '../../../shared/calculatorEngines.js';
+} from '@aloka/shared/calculatorEngines';
 
 test('calculator registry has unique identifiers and valid categories', () => {
   const ids = calculators.map(({ id }) => id);

@@ -24,10 +24,11 @@ const app = express();
 const allowedOrigins = [
   process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
+  ...(process.env.CORS_ORIGINS || '').split(','),
   ...(process.env.NODE_ENV !== 'production'
     ? ['http://localhost:5173', 'http://127.0.0.1:5173']
     : [])
-].filter(Boolean);
+].map((origin) => origin?.trim().replace(/\/+$/, '')).filter(Boolean);
 
 app.use(
   cors({

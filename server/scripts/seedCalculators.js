@@ -3,8 +3,8 @@ import mongoose from 'mongoose';
 import { connectDB } from '../src/config/db.js';
 import Calculator from '../src/models/Calculator.js';
 import CalculatorCategory from '../src/models/CalculatorCategory.js';
-import { calculatorCategories, calculators } from '../../shared/calculators.js';
-import { implementedCalculatorSlugs } from '../../shared/calculatorEngines.js';
+import { calculatorCategories, calculators } from '@aloka/shared/calculators';
+import { implementedCalculatorSlugs } from '@aloka/shared/calculatorEngines';
 
 const categoryTypes = {
   'Income tax': 'tax',

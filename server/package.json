@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "build": "vite build",
+    "build": "node --check src/index.js",
     "seed:calculators": "node scripts/seedCalculators.js",
     "admin:promote": "node scripts/promoteAdmin.js",
     "test": "node --test"
   },
   "dependencies": {
+    "@aloka/shared": "file:../shared",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
     "cookie-parser": "^1.4.7",

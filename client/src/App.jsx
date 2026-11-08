@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import PublicLayout from './layouts/PublicLayout';
 import UserLayout from './layouts/UserLayout';
@@ -55,6 +55,17 @@ function getPageTitle(pathname) {
   return 'Finance & Tax Knowledge';
 }
 
+function ScrollToTop() {
+  const { pathname, search, hash } = useLocation();
+
+  useLayoutEffect(() => {
+    if (hash) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname, search, hash]);
+
+  return null;
+}
+
 export default function App() {
   const { pathname } = useLocation();
 
@@ -92,6 +103,8 @@ export default function App() {
   }, [pathname]);
 
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
@@ -141,5 +154,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
 }

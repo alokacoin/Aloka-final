@@ -1,8 +1,11 @@
 import axios from 'axios';
-import { implementedCalculatorSlugs } from '../../../shared/calculatorEngines.js';
+import { implementedCalculatorSlugs } from '@aloka/shared/calculatorEngines';
+
+export const apiBaseUrl = import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? 'https://api.aloka.co.in/api' : '/api');
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: apiBaseUrl,
   withCredentials: true
 });
 
