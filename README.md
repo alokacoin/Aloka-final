@@ -9,14 +9,14 @@ This project combines:
 - an admin portal for content, news, services, and inquiries
 - a services directory with category management and service inquiries
 - a calculator library for user-facing financial tools
-- blog authoring and review workflows
+- blog authoring and direct publishing
 
 The app is structured as a full-stack product using a React frontend and Express + MongoDB backend.
 
 ## Project goals
 
 - Help users learn about finance, tax, and business decisions
-- Support public article publishing and review workflows
+- Support user-owned article publishing and management
 - Present curated and approved finance/news content
 - Offer a directory of professional services with inquiry capture
 - Make calculators easy to discover and use
@@ -41,7 +41,7 @@ The app is structured as a full-stack product using a React frontend and Express
 - Service inquiry tracking from the user side
 
 ### Admin experience
-- Blog moderation and approval flow
+- Dynamic blog inventory with admin deletion controls
 - News moderation and feed source management
 - Calculator catalogue management and publishing controls
 - Service categories and service management
@@ -228,18 +228,18 @@ The recommended production split is:
 | Component | Custom domain | Project directory | Install and build command (from repository root) | Start / output |
 |---|---|---|---|---|
 | Frontend | `https://aloka.co.in` (optionally `https://www.aloka.co.in`) | `client/` | `npm install --prefix client --install-links` then `npm run build --prefix client` | Publish `client/dist/` as a static site |
-| Backend API | `https://api.aloka.co.in` | `server/` | `npm install --prefix server --install-links` then `npm run build --prefix server` | `npm start --prefix server` |
+| Backend API | `https://server.aloka.co.in` | `server/` | `npm install --prefix server --install-links` then `npm run build --prefix server` | `npm start --prefix server` |
 
 Both deployment services must check out the **whole repository**, including the sibling `shared/` directory, and use the repository root as their build context. The shared code is installed locally by each app's `file:../shared` dependency. Do not deploy only the `client/` or `server/` folder without `shared/`. If you change files in `shared/` during local development, reinstall the package in the app you changed with `npm install --install-links`.
 
 Configure the frontend service's build-time variables:
 
 ```env
-VITE_API_URL=https://api.aloka.co.in/api
+VITE_API_URL=https://server.aloka.co.in/api
 VITE_GOOGLE_CLIENT_ID=your-google-oauth-client-id
 ```
 
-`VITE_API_URL` is embedded into the frontend at build time. The frontend defaults to the Aloka API domain for production if this variable is omitted, but setting it explicitly is recommended.
+`VITE_API_URL` is embedded into the frontend at build time. The frontend defaults to `https://server.aloka.co.in/api` for production if this variable is omitted, but setting it explicitly is recommended.
 
 Configure the backend service's environment:
 
@@ -250,23 +250,23 @@ JWT_SECRET=your-long-random-production-secret
 CLIENT_URL=https://aloka.co.in
 FRONTEND_URL=https://aloka.co.in
 CORS_ORIGINS=https://aloka.co.in,https://www.aloka.co.in
-BACKEND_URL=https://api.aloka.co.in
-GOOGLE_CALLBACK_URL=https://api.aloka.co.in/api/auth/google/callback
+BACKEND_URL=https://server.aloka.co.in
+GOOGLE_CALLBACK_URL=https://server.aloka.co.in/api/auth/google/callback
 ```
 
 Also configure any integrations you use, such as Cloudinary (`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`), Resend (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`), and news providers. Let the hosting provider supply `PORT` unless it requires a fixed value.
 
 ### DNS, HTTPS, and sign-in checklist
 
-1. Add `aloka.co.in` (and optionally `www.aloka.co.in`) to the frontend host and `api.aloka.co.in` to the backend host.
+1. Add `aloka.co.in` (and optionally `www.aloka.co.in`) to the frontend host and `server.aloka.co.in` to the backend host.
 2. Create the DNS records requested by each host (commonly an apex A/ALIAS record for the frontend and a CNAME for the API). DNS targets depend on the hosting provider.
 3. Enable HTTPS for both domains before using production sign-in.
-4. Set the frontend build variable `VITE_API_URL` to `https://api.aloka.co.in/api`.
+4. Set the frontend build variable `VITE_API_URL` to `https://server.aloka.co.in/api`.
 5. Set backend `CLIENT_URL`, `FRONTEND_URL`, and `CORS_ORIGINS` to the exact frontend origins. Add any additional frontend hostnames explicitly.
-6. In Google OAuth settings, add `https://aloka.co.in` as an authorized JavaScript origin and `https://api.aloka.co.in/api/auth/google/callback` as an authorized redirect URI. Use the same OAuth client ID in `VITE_GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_ID`; keep `GOOGLE_CLIENT_SECRET` only on the backend.
-7. Check `https://api.aloka.co.in/api/health` after deployment. It should report `database: connected`.
+6. In Google OAuth settings, add `https://aloka.co.in` as an authorized JavaScript origin and `https://server.aloka.co.in/api/auth/google/callback` as an authorized redirect URI. Use the same OAuth client ID in `VITE_GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_ID`; keep `GOOGLE_CLIENT_SECRET` only on the backend.
+7. Check `https://server.aloka.co.in/api/health` after deployment. It should report `database: connected`.
 
-The client sends credentialed requests to the API. The API must allow the frontend origin with credentialed CORS. Production auth cookies are secure and host-only to `api.aloka.co.in`; do not set a cookie domain unless your authentication design is intentionally changed.
+The client sends credentialed requests to the API. The API must allow the frontend origin with credentialed CORS. Production auth cookies are secure and host-only to `server.aloka.co.in`; do not set a cookie domain unless your authentication design is intentionally changed.
 
 ## Important routes
 
@@ -337,12 +337,12 @@ This populates the admin-managed calculator catalogue and category metadata.
 Users can:
 - write drafts
 - save automatically to local recovery storage
-- edit draft content
-- submit posts for review
-- see status updates such as draft, pending, rejected, or published
+- edit their own blogs
+- publish posts directly without admin approval
+- see status updates such as draft or published
 - delete their own posts
 
-Admins can review submitted content and approve or reject it.
+Admins can browse all blogs, search and filter by status, and permanently delete blogs. The admin blog page does not approve or reject posts. Older posts already marked pending or rejected remain visible in the admin list; their owners can edit and publish them.
 
 ## News workflow
 

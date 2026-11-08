@@ -68,7 +68,7 @@ export default function UserBlogsPage() {
                   <h2 className="text-lg font-bold text-heading">{item.title}</h2>
                 )}
                 <p className="mt-2 text-sm text-muted">{item.category} · Updated {new Date(item.updatedAt).toLocaleDateString()}</p>
-                {item.rejectionMessage && <p className="mt-2 max-w-xl text-sm text-error">Review feedback: {item.rejectionMessage}</p>}
+                {item.rejectionMessage && <p className="mt-2 max-w-xl text-sm text-muted">Previous feedback: {item.rejectionMessage}</p>}
               </div>
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-secondary px-3 py-1 text-sm font-medium capitalize text-body">{item.status}</span>

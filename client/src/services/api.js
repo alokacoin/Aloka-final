@@ -2,7 +2,7 @@ import axios from 'axios';
 import { implementedCalculatorSlugs } from '@aloka/shared/calculatorEngines';
 
 export const apiBaseUrl = import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD ? 'https://api.aloka.co.in/api' : '/api');
+  (import.meta.env.PROD ? 'https://server.aloka.co.in/api' : '/api');
 
 export const api = axios.create({
   baseURL: apiBaseUrl,

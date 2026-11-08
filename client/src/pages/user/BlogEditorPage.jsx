@@ -247,13 +247,13 @@ export default function BlogEditorPage() {
     if (form.excerpt.length > 500) errors.excerpt = 'Excerpt must be 500 characters or fewer.';
     if (form.seoTitle.length > 70) errors.seoTitle = 'SEO title must be 70 characters or fewer.';
     if (form.seoDescription.length > 170) errors.seoDescription = 'SEO description must be 170 characters or fewer.';
-    if (!editorText(form.content).trim()) errors.content = 'Write some article content before submitting for review.';
+    if (!editorText(form.content).trim()) errors.content = 'Write some article content before publishing.';
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug || getTitleSlug(form.title))) errors.slug = 'Use lowercase letters, numbers, and hyphens in the URL slug.';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const submitForReview = async () => {
+  const publishBlog = async () => {
     if (!validate()) {
       setIsSettingsOpen(true);
       return;
@@ -272,13 +272,13 @@ export default function BlogEditorPage() {
       setWorkflowNotice('');
       setErrorMessage(data.message);
     } catch (error) {
-      setErrorMessage(error.response?.data?.message || 'Could not submit your blog for review.');
+      setErrorMessage(error.response?.data?.message || 'Could not publish your blog.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const statusLabel = blogStatus === 'pending' ? 'Pending review' : blogStatus === 'published' ? 'Published' : blogStatus === 'rejected' ? 'Changes requested' : 'Draft';
+  const statusLabel = blogStatus === 'pending' ? 'Needs publishing' : blogStatus === 'published' ? 'Published' : blogStatus === 'rejected' ? 'Needs publishing' : 'Draft';
   const saveManually = () => saveDraft(formRef.current, revision.current);
   const estimatedWords = useMemo(() => editorText(form.content).trim().split(/\s+/).filter(Boolean).length, [form.content]);
 
@@ -303,16 +303,16 @@ export default function BlogEditorPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={saveManually} disabled={!editable || isSubmitting || saveStatus === 'saving'} className="secondary-btn px-3 py-2"><Save size={16} /> Save</button>
             <button type="button" onClick={() => setIsPreviewing((value) => !value)} className="secondary-btn px-3 py-2"><Eye size={16} /> {isPreviewing ? 'Edit' : 'Preview'}</button>
-            {['draft', 'rejected'].includes(blogStatus) && <button type="button" onClick={submitForReview} disabled={isSubmitting} className="primary-btn px-4 py-2.5"><Send size={16} /> {isSubmitting ? 'Submitting…' : 'Submit for review'}</button>}
+            {['draft', 'rejected', 'pending'].includes(blogStatus) && <button type="button" onClick={publishBlog} disabled={isSubmitting} className="primary-btn px-4 py-2.5"><Send size={16} /> {isSubmitting ? 'Publishing…' : 'Publish article'}</button>}
           </div>
         </div>
       </header>
 
       {errorMessage && <p role={blogStatus === 'draft' ? 'alert' : 'status'} className={`mb-5 rounded-xl border p-4 text-sm ${saveStatus === 'error' || fieldErrors.content ? 'border-error/30 bg-error/5 text-error' : 'border-primary/20 bg-soft-blue text-body'}`}>{errorMessage}</p>}
       {workflowNotice && <p role="status" className="mb-5 rounded-xl border border-primary/20 bg-soft-blue p-4 text-sm text-body">{workflowNotice}</p>}
-      {rejectionMessage && <div role="alert" className="mb-5 rounded-xl border border-error/30 bg-error/5 p-4"><p className="font-semibold text-error">Review feedback</p><p className="mt-1 text-sm text-body">{rejectionMessage}</p><p className="mt-2 text-xs text-muted">Update your article and submit it again for review.</p></div>}
-      {blogStatus === 'pending' && <p className="mb-5 rounded-xl border border-primary/20 bg-soft-blue p-4 text-sm text-body">This article is awaiting editorial review. Editing and saving it will return it to Draft so you can submit the updated version again.</p>}
-      {blogStatus === 'published' && <p className="mb-5 rounded-xl border border-success/20 bg-success/5 p-4 text-sm text-body">This article is published. Editing and saving it will unpublish it as a Draft until you submit the updated version for review.</p>}
+      {rejectionMessage && <div role="alert" className="mb-5 rounded-xl border border-error/30 bg-error/5 p-4"><p className="font-semibold text-error">Previous feedback</p><p className="mt-1 text-sm text-body">{rejectionMessage}</p></div>}
+      {blogStatus === 'pending' && <p className="mb-5 rounded-xl border border-primary/20 bg-soft-blue p-4 text-sm text-body">This article was awaiting review under the previous publishing flow. Publish it here to make it public.</p>}
+      {blogStatus === 'published' && <p className="mb-5 rounded-xl border border-success/20 bg-success/5 p-4 text-sm text-body">This article is published. Editing and saving it will return it to Draft until you publish your changes.</p>}
 
       {isPreviewing ? (
         <div className="card-surface p-5 sm:p-8">
@@ -384,7 +384,7 @@ export default function BlogEditorPage() {
                 </div>
               )}
             </section>
-            <p className="flex items-start gap-2 text-xs leading-5 text-muted"><FileText size={15} className="mt-0.5 shrink-0" /> Submitting sends this draft to the Aloka team. It will only appear publicly after approval.</p>
+            <p className="flex items-start gap-2 text-xs leading-5 text-muted"><FileText size={15} className="mt-0.5 shrink-0" /> Publishing makes this article publicly visible. You can edit or delete your own articles from My articles.</p>
             <DraftSaveIndicator status={saveStatus} savedAt={savedAt} />
           </aside>
         </div>

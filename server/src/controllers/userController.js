@@ -198,7 +198,7 @@ export const updateUserBlog = asyncHandler(async (req, res) => {
   return res.json({
     success: true,
     message: withdrawnFromReview
-      ? 'Changes saved as a draft. Submit the article for review again when it is ready.'
+      ? 'Changes saved as a draft. Publish the article again when it is ready.'
       : 'Draft saved.',
     item: toOwnedBlog(blog)
   });
@@ -225,24 +225,21 @@ export const submitUserBlog = asyncHandler(async (req, res) => {
   }
   const blog = await Blog.findOne({ _id: req.params.id, author: req.user.sub });
   if (!blog) return res.status(404).json({ success: false, message: 'Blog not found.' });
-  if (blog.status === 'pending') {
-    return res.json({ success: true, message: 'This blog is already awaiting review.', item: toOwnedBlog(blog) });
-  }
-  if (!['draft', 'rejected'].includes(blog.status)) {
-    return res.status(409).json({ success: false, message: 'Only drafts and rejected blogs can be submitted.' });
+  if (!['draft', 'rejected', 'pending'].includes(blog.status)) {
+    return res.status(409).json({ success: false, message: 'Only unpublished blogs can be published.' });
   }
   const validContent = blogContentSchema.safeParse(blog.content);
   if (!blog.title.trim() || !blog.category.trim() || !validContent.success ||
       !getContentText(blog.content).trim()) {
     return res.status(400).json({
       success: false,
-      message: 'Add a title, choose a category, and write article content before submitting for review.'
+      message: 'Add a title, choose a category, and write article content before publishing.'
     });
   }
-  blog.status = 'pending';
+  blog.status = 'published';
   blog.rejectionMessage = '';
   await blog.save();
-  return res.json({ success: true, message: 'Your blog was submitted for review.', item: toOwnedBlog(blog) });
+  return res.json({ success: true, message: 'Your blog is now published.', item: toOwnedBlog(blog) });
 });
 
 export const listUserBookmarks = asyncHandler(async (req, res) => {

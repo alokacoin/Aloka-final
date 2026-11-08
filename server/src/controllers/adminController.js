@@ -14,10 +14,10 @@ export const getAdminSummary = asyncHandler(async (_req, res) => {
     };
   });
   const start = months[0].date;
-  const [totalUsers, publishedBlogs, pendingReview, openInquiries, userActivity, blogActivity] = await Promise.all([
+  const [totalUsers, publishedBlogs, unpublishedBlogs, openInquiries, userActivity, blogActivity] = await Promise.all([
     User.countDocuments(),
     Blog.countDocuments({ status: 'published' }),
-    Blog.countDocuments({ status: { $in: ['draft', 'pending'] } }),
+    Blog.countDocuments({ status: { $ne: 'published' } }),
     Inquiry.countDocuments({ status: { $in: ['new', 'reviewed'] } }),
     User.aggregate([
       { $match: { createdAt: { $gte: start } } },
@@ -37,7 +37,7 @@ export const getAdminSummary = asyncHandler(async (_req, res) => {
   }));
   res.json({
     success: true,
-    stats: { totalUsers, publishedBlogs, pendingReview, openInquiries },
+    stats: { totalUsers, publishedBlogs, unpublishedBlogs, openInquiries },
     activity
   });
 });

@@ -1,125 +1,138 @@
-import { useCallback, useEffect, useState } from 'react';
-import { RotateCw, X } from 'lucide-react';
-import ArticleContent from '../../components/blog/ArticleContent';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ExternalLink, RotateCw, Search, Trash2 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { api } from '../../services/api';
+
+const emptyCounts = { all: 0, draft: 0, pending: 0, published: 0, rejected: 0 };
 
 export default function AdminBlogsPage() {
   const { toast } = useToast();
   const [items, setItems] = useState([]);
+  const [counts, setCounts] = useState(emptyCounts);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('all');
+  const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [deletingId, setDeletingId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  const [rejecting, setRejecting] = useState(null);
-  const [rejectionMessage, setRejectionMessage] = useState('');
-  const [isUpdating, setIsUpdating] = useState(false);
+  const requestId = useRef(0);
 
   const loadBlogs = useCallback(async () => {
+    const currentRequestId = ++requestId.current;
     setIsLoading(true);
     setErrorMessage('');
     try {
-      const { data } = await api.get('/admin/blogs');
-      setItems(data.items);
-    } catch (error) {
-      setErrorMessage(error.response?.data?.message || 'Could not load articles for review.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadBlogs(); }, [loadBlogs]);
-
-  const updateStatus = async (item, status, message = '') => {
-    setIsUpdating(true);
-    try {
-      await api.patch(`/admin/blogs/${item._id}/status`, {
-        status,
-        rejectionMessage: message
+      const { data } = await api.get('/admin/blogs', {
+        params: { page, limit: 20, status, search: search.trim() }
       });
-      setItems((current) => current.filter(({ _id }) => _id !== item._id));
-      setRejecting(null);
-      setRejectionMessage('');
-      toast(status === 'published' ? 'Blog approved and published.' : 'Review feedback sent to the author.', 'success');
+      if (currentRequestId !== requestId.current) return;
+      setItems(data.items || []);
+      setCounts({ ...emptyCounts, ...data.counts });
+      setPagination(data.pagination);
     } catch (error) {
-      toast(error.response?.data?.message || 'Could not update this article.', 'error');
+      if (currentRequestId === requestId.current) {
+        setErrorMessage(error.response?.data?.message || 'Could not load blogs.');
+      }
     } finally {
-      setIsUpdating(false);
+      if (currentRequestId === requestId.current) setIsLoading(false);
+    }
+  }, [page, search, status]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(loadBlogs, 250);
+    return () => window.clearTimeout(timer);
+  }, [loadBlogs, refreshKey]);
+
+  const deleteBlog = async (item) => {
+    if (!window.confirm(`Permanently delete "${item.title || 'Untitled blog'}"? This cannot be undone.`)) return;
+    setDeletingId(item._id);
+    try {
+      await api.delete(`/admin/blogs/${item._id}`);
+      toast('Blog deleted.', 'success');
+      setRefreshKey((value) => value + 1);
+    } catch (error) {
+      toast(error.response?.data?.message || 'Could not delete this blog.', 'error');
+    } finally {
+      setDeletingId('');
     }
   };
 
-  const submitRejection = (event) => {
-    event.preventDefault();
-    if (!rejecting || rejectionMessage.trim().length < 5) return;
-    updateStatus(rejecting, 'rejected', rejectionMessage.trim());
-  };
+  const statusLabel = (value) => value === 'pending' ? 'Legacy pending' : value;
 
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Editorial workflow</p>
-          <h1 className="mt-2 text-3xl font-black text-heading">Blog review</h1>
-          <p className="mt-2 text-sm text-muted">Review submitted drafts before they appear publicly.</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Content management</p>
+          <h1 className="mt-2 text-3xl font-black text-heading">Blogs</h1>
+          <p className="mt-2 text-sm text-muted">Browse all blogs and remove posts when needed. New submissions publish directly without admin approval.</p>
         </div>
-        <button type="button" onClick={loadBlogs} className="secondary-btn"><RotateCw size={16} /> Refresh</button>
+        <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={isLoading} className="secondary-btn">
+          <RotateCw size={16} className={isLoading ? 'animate-spin' : ''} /> Refresh
+        </button>
       </header>
 
+      <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" aria-label="Blog counts">
+        {Object.entries(counts).map(([key, count]) => (
+          <button key={key} type="button" onClick={() => { setStatus(key); setPage(1); }} className={`card-surface p-4 text-left transition hover:border-primary/40 ${status === key ? 'border-primary ring-2 ring-primary/20' : ''}`}>
+            <span className="block text-xs font-semibold capitalize text-muted">{key === 'all' ? 'All blogs' : statusLabel(key)}</span>
+            <span className="mt-1 block text-2xl font-black text-heading">{count}</span>
+          </button>
+        ))}
+      </section>
+
+      <section className="card-surface grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_13rem]">
+        <label className="relative block">
+          <span className="sr-only">Search blogs</span>
+          <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} maxLength={120} className="form-control pl-10" placeholder="Search title, excerpt, or category" />
+        </label>
+        <label>
+          <span className="sr-only">Filter by blog status</span>
+          <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="form-control">
+            {['all', 'published', 'draft', 'pending', 'rejected'].map((value) => <option key={value} value={value}>{value === 'all' ? 'All statuses' : statusLabel(value)}</option>)}
+          </select>
+        </label>
+      </section>
+
       {errorMessage && <p role="alert" className="rounded-xl border border-error/30 bg-error/5 p-4 text-sm text-error">{errorMessage}</p>}
-      {isLoading ? <p className="text-sm text-muted">Loading review queue…</p> : items.length ? (
-        <div className="space-y-4">
+      {isLoading ? <p className="text-sm text-muted">Loading blogs…</p> : items.length ? (
+        <div className="space-y-3">
           {items.map((item) => (
-            <article key={item._id} className="card-surface p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${item.status === 'pending' ? 'bg-warning/10 text-warning' : 'bg-error/10 text-error'}`}>{item.status}</span>
-                    <span className="text-xs text-muted">{item.category}</span>
-                    <time className="text-xs text-muted" dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleDateString()}</time>
-                  </div>
-                  <h2 className="mt-3 text-xl font-bold text-heading">{item.title || 'Untitled draft'}</h2>
-                  <p className="mt-1 text-xs text-muted">{item.author?.name || 'Unknown author'}{item.author?.email ? ` · ${item.author.email}` : ''}</p>
-                  {item.excerpt && <p className="mt-3 max-w-3xl text-sm leading-6 text-body">{item.excerpt}</p>}
+            <article key={item._id} className="card-surface flex flex-wrap items-start justify-between gap-4 p-5">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold capitalize text-body">{statusLabel(item.status)}</span>
+                  {item.category && <span className="text-xs text-muted">{item.category}</span>}
+                  <time className="text-xs text-muted" dateTime={item.updatedAt}>Updated {new Date(item.updatedAt).toLocaleDateString()}</time>
                 </div>
-                {item.status === 'pending' && (
-                  <div className="flex shrink-0 gap-2">
-                    <button type="button" onClick={() => updateStatus(item, 'published')} disabled={isUpdating} className="primary-btn px-4 py-2">Approve & publish</button>
-                    <button type="button" onClick={() => { setRejecting(item); setRejectionMessage(''); }} disabled={isUpdating} className="secondary-btn px-4 py-2">Request changes</button>
-                  </div>
-                )}
+                <h2 className="mt-3 break-words text-lg font-bold text-heading">{item.title || 'Untitled blog'}</h2>
+                <p className="mt-1 text-xs text-muted">{item.author?.name || 'Unknown author'}{item.author?.email ? ` · ${item.author.email}` : ''}</p>
+                {item.excerpt && <p className="mt-2 max-w-3xl text-sm leading-6 text-body">{item.excerpt}</p>}
               </div>
-              <details className="mt-4 border-t border-border pt-3">
-                <summary className="cursor-pointer text-sm font-semibold text-primary">Read submitted article</summary>
-                <div className="mt-4 max-h-[34rem] overflow-auto rounded-xl bg-background p-4">
-                  <ArticleContent content={item.content} />
-                </div>
-                {item.tags?.length > 0 && <p className="mt-3 text-xs text-muted">Tags: {item.tags.join(', ')}</p>}
-                {item.coverImage?.url && <img src={item.coverImage.url} alt={item.coverImage.alt || ''} loading="lazy" className="mt-4 max-h-64 rounded-xl object-cover" />}
-              </details>
-              {item.status === 'rejected' && item.rejectionMessage && <p className="mt-4 rounded-lg bg-error/5 p-3 text-sm text-error">Previous feedback: {item.rejectionMessage}</p>}
+              <div className="flex shrink-0 gap-2">
+                {item.status === 'published' && item.slug && <a href={`/blogs/${encodeURIComponent(item.slug)}`} target="_blank" rel="noreferrer" className="secondary-btn px-3 py-2" aria-label={`View ${item.title}`}><ExternalLink size={15} /> View</a>}
+                <button type="button" onClick={() => deleteBlog(item)} disabled={deletingId === item._id} className="secondary-btn px-3 py-2 text-error disabled:opacity-60" aria-label={`Delete ${item.title || 'untitled blog'}`}>
+                  <Trash2 size={15} />{deletingId === item._id ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
             </article>
           ))}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <p className="text-sm text-muted">Showing {(page - 1) * pagination.limit + 1}–{Math.min(page * pagination.limit, pagination.total)} of {pagination.total}</p>
+            <div className="flex items-center gap-2">
+              <button type="button" className="secondary-btn px-3 py-2" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1 || isLoading}>Previous</button>
+              <span className="text-sm text-muted">Page {page} of {pagination.pages}</span>
+              <button type="button" className="secondary-btn px-3 py-2" onClick={() => setPage((value) => Math.min(pagination.pages, value + 1))} disabled={page >= pagination.pages || isLoading}>Next</button>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="card-surface p-10 text-center">
-          <h2 className="font-semibold text-heading">Review queue is clear</h2>
-          <p className="mt-2 text-sm text-muted">New submissions will appear here when authors request review.</p>
-        </div>
-      )}
-
-      {rejecting && (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/50 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isUpdating) setRejecting(null); }}>
-          <form onSubmit={submitRejection} role="dialog" aria-modal="true" aria-labelledby="rejection-title" className="card-surface w-full max-w-lg p-6">
-            <div className="flex items-center justify-between gap-4">
-              <h2 id="rejection-title" className="text-xl font-bold text-heading">Request changes</h2>
-              <button type="button" onClick={() => setRejecting(null)} aria-label="Close dialog" className="rounded-lg p-2 text-muted hover:bg-secondary"><X size={18} /></button>
-            </div>
-            <p className="mt-2 text-sm text-muted">Explain what the author should revise before resubmitting.</p>
-            <label htmlFor="blog-rejection-message" className="mb-2 mt-5 block text-sm font-semibold text-heading">Feedback</label>
-            <textarea id="blog-rejection-message" value={rejectionMessage} onChange={(event) => setRejectionMessage(event.target.value)} minLength={5} maxLength={1000} required rows={5} className="form-control" />
-            <div className="mt-5 flex justify-end gap-3">
-              <button type="button" onClick={() => setRejecting(null)} className="secondary-btn">Cancel</button>
-              <button type="submit" disabled={isUpdating || rejectionMessage.trim().length < 5} className="primary-btn">{isUpdating ? 'Sending…' : 'Send feedback'}</button>
-            </div>
-          </form>
+          <h2 className="font-semibold text-heading">No blogs found</h2>
+          <p className="mt-2 text-sm text-muted">{search || status !== 'all' ? 'Try another search or status filter.' : 'Blogs created by users will appear here.'}</p>
         </div>
       )}
     </div>

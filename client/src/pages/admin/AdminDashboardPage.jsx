@@ -37,7 +37,7 @@ export default function AdminDashboardPage() {
         {[
           ['Total users', summary?.stats.totalUsers],
           ['Published blogs', summary?.stats.publishedBlogs],
-          ['Pending review', summary?.stats.pendingReview]
+          ['Unpublished blogs', summary?.stats.unpublishedBlogs]
         ].map(([label, value]) => (
           <div key={label} className="rounded-2xl bg-white p-6 shadow-soft">
             <div className="text-sm text-slate-500">{label}</div>

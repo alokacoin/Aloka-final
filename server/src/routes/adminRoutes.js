@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listAdminBlogs, moderateBlog } from '../controllers/adminBlogController.js';
+import { deleteAdminBlog, listAdminBlogs } from '../controllers/adminBlogController.js';
 import { getAdminSummary } from '../controllers/adminController.js';
 import adminInquiryRoutes from './adminInquiryRoutes.js';
 import adminNewsRoutes from './adminNewsRoutes.js';
@@ -9,7 +9,7 @@ const router = Router();
 
 router.get('/summary', getAdminSummary);
 router.get('/blogs', listAdminBlogs);
-router.patch('/blogs/:id/status', moderateBlog);
+router.delete('/blogs/:id', deleteAdminBlog);
 router.use('/news', adminNewsRoutes);
 router.use('/services', adminServiceRoutes);
 router.use('/inquiries', adminInquiryRoutes);
