@@ -57,6 +57,7 @@ export default function BlogEditorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [workflowNotice, setWorkflowNotice] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [blogId, setBlogId] = useState(id || '');
   const [blogStatus, setBlogStatus] = useState('draft');
@@ -162,6 +163,9 @@ export default function BlogEditorPage() {
         const savedTime = response.data.item.updatedAt || new Date().toISOString();
         setBlogStatus(response.data.item.status);
         setRejectionMessage(response.data.item.rejectionMessage || '');
+        if (response.data.message?.startsWith('Changes saved as a draft.')) {
+          setWorkflowNotice(response.data.message);
+        }
         dirty.current = false;
         setSaveStatus('saved');
         setSavedAt(savedTime);
@@ -265,6 +269,7 @@ export default function BlogEditorPage() {
       const { data } = await api.post(`/user/blogs/${blogId}/submit`);
       setBlogStatus(data.item.status);
       setRejectionMessage('');
+      setWorkflowNotice('');
       setErrorMessage(data.message);
     } catch (error) {
       setErrorMessage(error.response?.data?.message || 'Could not submit your blog for review.');
@@ -304,6 +309,7 @@ export default function BlogEditorPage() {
       </header>
 
       {errorMessage && <p role={blogStatus === 'draft' ? 'alert' : 'status'} className={`mb-5 rounded-xl border p-4 text-sm ${saveStatus === 'error' || fieldErrors.content ? 'border-error/30 bg-error/5 text-error' : 'border-primary/20 bg-soft-blue text-body'}`}>{errorMessage}</p>}
+      {workflowNotice && <p role="status" className="mb-5 rounded-xl border border-primary/20 bg-soft-blue p-4 text-sm text-body">{workflowNotice}</p>}
       {rejectionMessage && <div role="alert" className="mb-5 rounded-xl border border-error/30 bg-error/5 p-4"><p className="font-semibold text-error">Review feedback</p><p className="mt-1 text-sm text-body">{rejectionMessage}</p><p className="mt-2 text-xs text-muted">Update your article and submit it again for review.</p></div>}
       {blogStatus === 'pending' && <p className="mb-5 rounded-xl border border-primary/20 bg-soft-blue p-4 text-sm text-body">This article is awaiting editorial review. Editing and saving it will return it to Draft so you can submit the updated version again.</p>}
       {blogStatus === 'published' && <p className="mb-5 rounded-xl border border-success/20 bg-success/5 p-4 text-sm text-body">This article is published. Editing and saving it will unpublish it as a Draft until you submit the updated version for review.</p>}
