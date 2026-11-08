@@ -257,9 +257,6 @@ npm run admin:promote
 
 This updates that existing account to an admin role.
 
-Example admin email used during local configuration/testing:
-
-- `aloka.co.in@gmail.com`
 
 Important:
 - Do not commit real passwords or secrets into the repository
